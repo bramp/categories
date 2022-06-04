@@ -1,0 +1,2 @@
+# categories
+Randomly generates categories
