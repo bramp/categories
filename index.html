@@ -194,37 +194,6 @@
 
     categories = shuffle(categories);
 
-    function display_welcome() {
-        var clon = welcome.content.cloneNode(true);
-        back.replaceChildren(clon);
-
-        const fullscreen = document.querySelector('#fullscreen');
-        fullscreen.addEventListener('click', () => {
-          toggleFullScreen();
-          return false;
-        });
-    }
-
-    function do_flip() {
-      if (card_idx == -1) {
-        display_welcome();
-
-      // Else replace the rear face with the next text
-      } else if (card_idx % 2 == 0) {
-        front.textContent = categories[card_idx];
-      } else {
-        back.textContent = categories[card_idx];
-      }
-
-      if (card_idx < 0) {
-        prev.style.display = "none";
-      } else {
-        prev.style.removeProperty('display');
-      }
-
-      card.style.transform = 'rotateY(' + (card_idx * 180) + 'deg)';
-    }
-
     let timer;
     function start_timer() {
       clearInterval(timer);
@@ -246,6 +215,43 @@
           countdown.textContent = (timeLeft / 1000).toFixed(2) + 's';
         }
       }, 50);
+    }
+
+    function display_welcome() {
+      // Cancel the previous countdown
+      clearInterval(timer);
+      countdown.textContent = '';
+
+      // Clone the welcome template, and move it into the back-card
+      var clon = welcome.content.cloneNode(true);
+      back.replaceChildren(clon);
+
+      // Make sure the fullscreen button works.
+      const fullscreen = document.querySelector('#fullscreen');
+      fullscreen.addEventListener('click', () => {
+        toggleFullScreen();
+        return false;
+      });
+    }
+
+    function do_flip() {
+      if (card_idx == -1) {
+        display_welcome();
+
+      // Else replace the rear face with the next text
+      } else if (card_idx % 2 == 0) {
+        front.textContent = categories[card_idx];
+      } else {
+        back.textContent = categories[card_idx];
+      }
+
+      if (card_idx < 0) {
+        prev.style.display = "none";
+      } else {
+        prev.style.removeProperty('display');
+      }
+
+      card.style.transform = 'rotateY(' + (card_idx * 180) + 'deg)';
     }
 
     // Flip to the welcome page
