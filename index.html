@@ -14,14 +14,16 @@
       padding: 0;
 
       overflow: hidden; /* Hide scrollbars */
+
+      font-family: sans-serif;
     }
 
     .container {
       display: flex;
       flex-direction: column;
-      min-height: 100vh;
+      height: 100%;
 
-      padding:  15px;
+      padding: 5px;
       box-sizing: border-box;
     }
 
@@ -41,9 +43,6 @@
     /* This container is needed to position the front and back side */
     .flip-card-inner {
       align-items: stretch;
-      flex: 1;
-
-      position: relative;
       width: 100%;
 
       text-align: center;
@@ -58,7 +57,8 @@
       height: 100%;
       -webkit-backface-visibility: hidden; /* Safari */
       backface-visibility: hidden;
-      font-size: 6vw;
+      font-size: 15vh;
+      font-weight: bold;
       overflow:hidden;
 
       border: 1px solid black;
@@ -68,50 +68,62 @@
       justify-content: center;
       align-items: center;
 
+      background-color: dodgerblue;
+      color: white;
     }
 
     .flip-card-controls {
-      /*height: 5vw;*/
-      font-size: 5vw;
-      /*
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      */
+      font-size: 8vh;
+      text-align: center;
     }
 
     /* Style the front side (fallback if image is missing) */
     .flip-card-front {
-      background-color: dodgerblue;
-      color: white;
+
     }
 
     /* Style the back side */
     .flip-card-back {
-      background-color: dodgerblue;
-      color: white;
-
       transform: rotateY(180deg);
+    }
+
+    .flip-card-text {
+      margin: 4vh;
+    }
+
+    .flip-card-text a {
+      color: white;
+      font-size: 5vh;
     }
 
   </style>
 </head>
 
 <body>
+<template id="welcome">
+    Welcome
+    <br />
+    <a href="#" id="fullscreen">Go Fullscreen</a>
+</template>
+
+<!-- From https://mixkit.co/free-sound-effects/game/ royalty-free sound effects -->
+<audio id="countdown_sound" src="mixkit-ominous-drums-227.wav" preload="auto"></audio>
+
 <div class="container">
   <div class="flip-card">
     <div class="flip-card-inner">
       <div class="flip-card-front">
-        Welcome
+        <div class="flip-card-text"></div>
       </div>
       <div class="flip-card-back">
-        Back
+        <div class="flip-card-text"></div>
       </div>
     </div>
   </div>
   <div class="flip-card-controls">
     <a href="#" style="float: left"  id="prev">Prev</a>
     <a href="#" style="float: right" id="next">Next</a>
+    <div id="countdown"></div>
   </div>
 </div>
   <script type="text/javascript" src='categories.js'></script>
@@ -135,32 +147,134 @@
       return array;
     }
 
-    var card_idx = 0;
-    const card = document.querySelector('.flip-card .flip-card-inner');
-    const prev = document.querySelector('#prev');
-    const next = document.querySelector('#next');
+    // Borrowed from https://web.dev/native-hardware-fullscreen/
+    function toggleFullScreen() {
+      var doc = window.document;
+      var docEl = doc.documentElement;
 
-    const front = document.querySelector('.flip-card-front');
-    const back  = document.querySelector('.flip-card-back');
+      var requestFullScreen =
+        docEl.requestFullscreen ||
+        docEl.mozRequestFullScreen ||
+        docEl.webkitRequestFullScreen ||
+        docEl.msRequestFullscreen;
+      var cancelFullScreen =
+        doc.exitFullscreen ||
+        doc.mozCancelFullScreen ||
+        doc.webkitExitFullscreen ||
+        doc.msExitFullscreen;
+
+      if (
+        !doc.fullscreenElement &&
+        !doc.mozFullScreenElement &&
+        !doc.webkitFullscreenElement &&
+        !doc.msFullscreenElement
+      ) {
+        requestFullScreen.call(docEl);
+      } else {
+        cancelFullScreen.call(doc);
+      }
+    }
+
+    const url_params = new URLSearchParams(window.location.search);
+    const duration = parseInt(url_params.get('duration'))
+    const countdown_duration = isNaN(duration) ? 60_000 : duration * 1000; // ms
+
+    let card_idx = -1;
+
+    const card = document.querySelector('.flip-card .flip-card-inner');
+    const prev = document.getElementById('prev');
+    const next = document.getElementById('next');
+
+    const welcome  = document.getElementById('welcome');
+    const countdown  = document.getElementById('countdown');
+    const countdown_sound = document.getElementById('countdown_sound');
+
+    const front = document.querySelector('.flip-card-front .flip-card-text');
+    const back  = document.querySelector('.flip-card-back .flip-card-text');
 
     categories = shuffle(categories);
 
+    function display_welcome() {
+        var clon = welcome.content.cloneNode(true);
+        back.replaceChildren(clon);
+
+        const fullscreen = document.querySelector('#fullscreen');
+        fullscreen.addEventListener('click', () => {
+          toggleFullScreen();
+          return false;
+        });
+    }
+
+    function do_flip() {
+      if (card_idx == -1) {
+        display_welcome();
+
+      // Else replace the rear face with the next text
+      } else if (card_idx % 2 == 0) {
+        front.textContent = categories[card_idx];
+      } else {
+        back.textContent = categories[card_idx];
+      }
+
+      if (card_idx < 0) {
+        prev.style.display = "none";
+      } else {
+        prev.style.removeProperty('display');
+      }
+
+      card.style.transform = 'rotateY(' + (card_idx * 180) + 'deg)';
+    }
+
+    let timer;
+    function start_timer() {
+      clearInterval(timer);
+
+      let start = Date.now();
+      timer = setInterval(function() {
+        let timeLeft = countdown_duration - (Date.now() - start);
+
+        if (timeLeft <= 0) {
+          timeLeft = 0;
+
+          clearInterval(timer);
+          countdown.textContent = 'Time\'s up!';
+
+          navigator.vibrate(500);
+          countdown_sound.play();
+
+        } else {
+          countdown.textContent = (timeLeft / 1000).toFixed(2) + 's';
+        }
+      }, 50);
+    }
+
+    // Flip to the welcome page
+    do_flip();
+
     prev.addEventListener('click', () => {
       card_idx--;
-      card.style.transform = 'rotateY(' + (card_idx * 180) + 'deg)';
+
+      if (card_idx <= -1) {
+        card_idx = -1;
+      }
+
+      do_flip();
 
       return false;
     });
 
     next.addEventListener('click', () => {
-      if (card_idx % 2 == 0) {
-        back.textContent = categories[card_idx];
-      } else {
-        front.textContent = categories[card_idx];
+      card_idx++;
+
+      if (card_idx >= categories.length) {
+        // Reset the game
+        card_idx = 0;
+        categories = shuffle(categories);
       }
 
-      card_idx++;
-      card.style.transform = 'rotateY(' + (card_idx * 180) + 'deg)';
+      do_flip();
+
+      start_timer();
 
       return false;
     });
